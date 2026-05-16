@@ -1,0 +1,14 @@
+{
+    "name": "nodejs-ecs-app",
+    "version": "1.0.0",
+    "description": "Node.js-ECS Fargate App",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+
+}

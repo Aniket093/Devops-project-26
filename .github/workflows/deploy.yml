@@ -1,0 +1,40 @@
+name: ECS Deployment Pipeline
+
+on:
+  push:                                       #Pipeline runs whenever code pushed.
+   branches:
+     - main
+
+jobs:
+  terraform-checks:
+   name: Terraform Validation
+
+   runs-on: Ubuntu-latest                     #GitHub provides temporary VM:
+
+   defaults:
+     run:
+       working-directory: terraform
+
+   steps:
+      - name: Checkout Code                   #Downloads your repository into runner.
+        uses: actions/checkout@v4             #Without this:pipeline cannot access code.
+        
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate    
+
+      - name: Setup TFLint                        #Production-grade Terraform quality checks.
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint                          #so that CI/CD should catch issues BEFORE deployment.
+        run: |
+          tflint --init
+          tflint

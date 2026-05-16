@@ -1,0 +1,1 @@
+aws_region = "ap-south-1" #ref -- value of variables defined in var.tf 
