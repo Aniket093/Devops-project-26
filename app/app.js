@@ -5,7 +5,7 @@ const app = express();
 const PORT = 3000;
 
 app.get("/", (req, res) => {
-    res.send("Node.js App Running on AWS ECS Fargate");
+    res.send("Version 2 Deployment Successful");
 });
 
 app.get("/health", (req, res) => {
