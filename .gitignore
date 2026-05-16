@@ -1,0 +1,14 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store
+
+# Environment
+.env
