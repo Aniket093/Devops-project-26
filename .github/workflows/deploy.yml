@@ -1,24 +1,27 @@
 name: ECS Deployment Pipeline
 
 on:
-  push:                                       #Pipeline runs whenever code pushed.
-   branches:
-     - main
+  push:
+    branches:                                      #Pipeline runs whenever code pushed.
+      - main
 
 jobs:
-  terraform-checks:
-   name: Terraform Validation
+  deploy:
+    name: Build and Deploy
 
-   runs-on: Ubuntu-latest                     #GitHub provides temporary VM:
+    runs-on: ubuntu-latest                        #GitHub provides temporary VM:
 
-   defaults:
-     run:
-       working-directory: terraform
+    defaults:
+      run:
+        working-directory: terraform
 
-   steps:
-      - name: Checkout Code                   #Downloads your repository into runner.
-        uses: actions/checkout@v4             #Without this:pipeline cannot access code.
-        
+    steps:
+      - name: Checkout Code                       #Downloads your repository into runner.
+        uses: actions/checkout@v4                 #Without this:pipeline cannot access code.
+
+      # -----------------------------
+      # Terraform Setup
+      # -----------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -29,12 +32,67 @@ jobs:
         run: terraform init
 
       - name: Terraform Validate
-        run: terraform validate    
+        run: terraform validate
 
+      # -----------------------------
+      # TFLint
+      # -----------------------------
       - name: Setup TFLint                        #Production-grade Terraform quality checks.
         uses: terraform-linters/setup-tflint@v4
 
-      - name: Run TFLint                          #so that CI/CD should catch issues BEFORE deployment.
+      - name: Run TFLint                           #so that CI/CD should catch issues BEFORE deployment.
         run: |
           tflint --init
           tflint
+
+      # -----------------------------
+      # AWS Authentication
+      # -----------------------------
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # -----------------------------
+      # Login to ECR
+      # -----------------------------
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # -----------------------------
+      # Build Docker Image
+      # -----------------------------
+      - name: Build Docker Image
+        working-directory: ./app
+        run: |
+          docker build --platform linux/amd64 -t ${{ secrets.ECR_REPOSITORY }} .
+
+      # -----------------------------
+      # Tag Docker Image
+      # -----------------------------
+      - name: Tag Docker Image
+        run: |
+          docker tag \
+          ${{ secrets.ECR_REPOSITORY }}:latest \
+          ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+      # -----------------------------
+      # Push Image to ECR
+      # -----------------------------
+      - name: Push Image to ECR
+        run: |
+          docker push \
+          ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+      # -----------------------------
+      # Deploy to ECS
+      # -----------------------------
+      - name: Force ECS Deployment
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER }} \
+            --service ${{ secrets.ECS_SERVICE }} \
+            --force-new-deployment
