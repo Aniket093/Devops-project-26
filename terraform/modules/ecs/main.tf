@@ -3,19 +3,19 @@ resource "aws_ecs_cluster" "main" {
   name = var.cluster_name
 
   setting {
-    name = "containerInsights"              #Enables-->CloudWatch metrics,ECS monitoring,performance visibility
+    name  = "containerInsights" #Enables-->CloudWatch metrics,ECS monitoring,performance visibility
     value = "enabled"
   }
 
-  tags = { 
-    Name = var.cluster_name 
-    }
+  tags = {
+    Name = var.cluster_name
+  }
 }
 
 #CloudWatch Log Group creation
 resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name = "/ecs/nodejs-app"
-  retention_in_days = 7                             #Automatically deletes older logs.
+  name              = "/ecs/nodejs-app"
+  retention_in_days = 7 #Automatically deletes older logs.
 
   tags = {
     Name = "nodejs-app-logs"
@@ -23,7 +23,7 @@ resource "aws_cloudwatch_log_group" "ecs_logs" {
 }
 
 #ECS Task Execution Role creation --> Containers need AWS permissions---> pull images from ECR / send logs to CloudWatch
-resource "aws_iam_role" "ecs_task_execution_id" {     #Without IAM role: ECS cannot access AWS services
+resource "aws_iam_role" "ecs_task_execution_id" { #Without IAM role: ECS cannot access AWS services
   name = "ecsTaskExecutionRole"
 
   assume_role_policy = jsonencode({
@@ -45,35 +45,35 @@ resource "aws_iam_role" "ecs_task_execution_id" {     #Without IAM role: ECS can
 
 #ECS Execution Policy creation
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"  #AWS-managed policy enabling
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy" #AWS-managed policy enabling
   role       = aws_iam_role.ecs_task_execution_id.name
-  
+
 }
 
 #Task Definition creation
 resource "aws_ecs_task_definition" "app_task" {
-  family = "nodejs-app"
-  network_mode = "awsvpc"                          #Recommended for Fargate -->ECS task gets-->its own ENI, its own private IP
-  requires_compatibilities = ["FARGATE"]           #Specify launch type --> Run serverless containers
+  family                   = "nodejs-app"
+  network_mode             = "awsvpc"    #Recommended for Fargate -->ECS task gets-->its own ENI, its own private IP
+  requires_compatibilities = ["FARGATE"] #Specify launch type --> Run serverless containers
 
-  cpu = "256"                                       
+  cpu    = "256"
   memory = "512"
 
-  execution_role_arn = aws_iam_role.ecs_task_execution_id.arn   #Task execution role ARN
+  execution_role_arn = aws_iam_role.ecs_task_execution_id.arn #Task execution role ARN
 
-  container_definitions = jsonencode([                          #Container definitions
+  container_definitions = jsonencode([ #Container definitions
     {
-      name  = "nodejs-app"
-      image = "${var.ecr_repository_url}:latest"                #ECR repository URL -->ECS pulls image from ECR automatically.
+      name      = "nodejs-app"
+      image     = "${var.ecr_repository_url}:latest" #ECR repository URL -->ECS pulls image from ECR automatically.
       essential = true
 
-      portMappings = [                                        #Maps: container port--TO--task networking
+      portMappings = [ #Maps: container port--TO--task networking
         {
           containerPort = 3000
           hostPort      = 3000
         }
       ]
-      logConfiguration = {                                    #sends container logs to CloudWatch.
+      logConfiguration = { #sends container logs to CloudWatch.
         logDriver = "awslogs"
 
         options = {
@@ -89,12 +89,12 @@ resource "aws_ecs_task_definition" "app_task" {
 
 #ECS Service creation 
 resource "aws_ecs_service" "app_service" {
-  name = "nodejs-service"
-  cluster = aws_ecs_cluster.main.id
+  name            = "nodejs-service"
+  cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app_task.arn
 
-  desired_count = 2                                       #2 running containers
-  launch_type = "FARGATE"
+  desired_count = 2 #2 running containers
+  launch_type   = "FARGATE"
 
   network_configuration {
     subnets = [
@@ -105,14 +105,14 @@ resource "aws_ecs_service" "app_service" {
     security_groups = [var.ecs_security_group_id]
 
     assign_public_ip = true
-    }
+  }
 
-    load_balancer {                                       # connects : ALB <-> ECS Service. This is how traffic reaches containers.
-      target_group_arn = var.target_group_arn
+  load_balancer { # connects : ALB <-> ECS Service. This is how traffic reaches containers.
+    target_group_arn = var.target_group_arn
 
-      container_name = "nodejs-app"
-      container_port = 3000
-    }
+    container_name = "nodejs-app"
+    container_port = 3000
+  }
 
-    depends_on = [ aws_iam_role_policy_attachment.ecs_task_execution_role_policy ]  #IAM permissions created BEFORE ECS service.
+  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role_policy] #IAM permissions created BEFORE ECS service.
 }
