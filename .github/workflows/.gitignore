@@ -1,9 +1,11 @@
 # Terraform
-**/.terraform/*
+.terraform/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
 
+# Distributed planetary state locks
+.terraform.lock.hcl 
 # Node
 node_modules/
 
