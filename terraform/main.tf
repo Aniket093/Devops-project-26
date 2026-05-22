@@ -1,3 +1,9 @@
+#workspace creation
+locals {
+  environment = terraform.workspace
+}
+
+
 # Calling VPC Module
 module "vpc" {
   source = "./modules/vpc" #Terraform now: enters module folder--reads module resources--creates infrastructure
@@ -21,13 +27,13 @@ module "security" {
 #Calling ECR Model
 module "ecr" {
   source          = "./modules/ecr"
-  repository_name = "nodejs-app"
+  repository_name = "${local.enviornment}-nodejs-app"
 }
 
 #Calling ECS Model
 module "ecs" {
   source       = "./modules/ecs"
-  cluster_name = "nodejs-cluster"
+  cluster_name = "${local.enviornment}-nodejs-cluster"                                         #updated the value nodejs-cluster
 
   # Later added after ecr,alb,targetgroup creation
   ecs_security_group_id = module.security.ecs_security_group_id.id
@@ -43,12 +49,13 @@ module "ecs" {
 #Calling ALB Module
 module "alb" {
   source = "./modules/alb"
-  vpc_id = module.vpc.vpc_id
+
+  vpc_id = "${local.environment}-nodejs-alb"        #module.vpc.vpc_id    
 
   public_subnet_1_id = module.vpc.public_subnet_1_id
   public_subnet_2_id = module.vpc.public_subnet_2_id
 
-  alb_security_group_id = module.security.alb_security_group_id.id
+  alb_security_group_id = module.security.alb_security_group_id #.id
 }
 # VPC module --> Security module --> ALB module --- Infrastructure becomes interconnected.
 #Terraform automatically builds dependency graph.

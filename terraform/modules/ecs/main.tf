@@ -14,7 +14,7 @@ resource "aws_ecs_cluster" "main" {
 
 #CloudWatch Log Group creation
 resource "aws_cloudwatch_log_group" "ecs_logs" {
-  name              = "/ecs/nodejs-app"
+  name              = "/ecs/${terraform.workspace}-nodejs-app"
   retention_in_days = 7 #Automatically deletes older logs.
 
   tags = {
@@ -52,7 +52,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 
 #Task Definition creation
 resource "aws_ecs_task_definition" "app_task" {
-  family                   = "nodejs-app"
+  family                   = "${local.enviornment}-nodejs-app"
   network_mode             = "awsvpc"    #Recommended for Fargate -->ECS task gets-->its own ENI, its own private IP
   requires_compatibilities = ["FARGATE"] #Specify launch type --> Run serverless containers
 
@@ -63,7 +63,7 @@ resource "aws_ecs_task_definition" "app_task" {
 
   container_definitions = jsonencode([ #Container definitions
     {
-      name      = "nodejs-app"
+      name      = "${local.enviornment}-nodejs-app"
       image     = "${var.ecr_repository_url}:latest" #ECR repository URL -->ECS pulls image from ECR automatically.
       essential = true
 

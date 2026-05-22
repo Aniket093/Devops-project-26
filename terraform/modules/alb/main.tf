@@ -1,6 +1,6 @@
 #ALB creation
 resource "aws_lb" "main" {
-  name               = "nodejs-alb"
+  alb_name = "${local.environment}-nodejs-alb"
   load_balancer_type = "application"
   internal           = false # Public ALB Accessible from internet.
 
